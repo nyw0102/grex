@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+ use std::io::{self, BufRead, Error, ErrorKind, Read};
 
 #[cfg(not(target_family = "wasm"))]
 mod cli {
@@ -45,34 +46,34 @@ mod cli {
         /// Use a hyphen `-` to read test cases from standard input.
         ///
         /// Conflicts with --file.
-        #[arg(
-            value_name = "INPUT",
-            allow_hyphen_values = true,
-            required_unless_present = "file",
-            conflicts_with = "file",
-            help_heading = "Input",
-            display_order = 1
-        )]
-        input: Vec<String>,
+        // #[arg(
+        //     value_name = "INPUT",
+        //     allow_hyphen_values = true,
+        //     required_unless_present = "file",
+        //     conflicts_with = "file",
+        //     help_heading = "Input",
+        //     display_order = 1
+        // )]
+        // input: Vec<String>,
 
-        /// Reads test cases on separate lines from a file.
-        ///
-        /// Lines may be ended with either a newline `\n` or a carriage return with a line feed `\r\n`.
-        /// The final line ending is optional.
-        ///
-        /// Use a hyphen `-` to read the filename from standard input.
-        ///
-        /// Conflicts with INPUT...
-        #[arg(
-            name = "file",
-            value_name = "FILE",
-            short,
-            long,
-            required_unless_present = "input",
-            help_heading = "Input",
-            display_order = 2
-        )]
-        file_path: Option<PathBuf>,
+        // /// Reads test cases on separate lines from a file.
+        // ///
+        // /// Lines may be ended with either a newline `\n` or a carriage return with a line feed `\r\n`.
+        // /// The final line ending is optional.
+        // ///
+        // /// Use a hyphen `-` to read the filename from standard input.
+        // ///
+        // /// Conflicts with INPUT...
+        // #[arg(
+        //     name = "file",
+        //     value_name = "FILE",
+        //     short,
+        //     long,
+        //     required_unless_present = "input",
+        //     help_heading = "Input",
+        //     display_order = 2
+        // )]
+        // file_path: Option<PathBuf>,
 
         // --------------------
         // DIGIT OPTIONS
@@ -290,42 +291,42 @@ mod cli {
         version: Option<String>,
     }
 
-    pub(crate) fn obtain_input(cli: &Cli) -> Result<Vec<String>, Error> {
-        let is_stdin_available = !stdin().is_terminal();
+    // pub(crate) fn obtain_input(cli: &Cli) -> Result<Vec<String>, Error> {
+    //     let is_stdin_available = !stdin().is_terminal();
 
-        if !cli.input.is_empty() {
-            let is_single_item = cli.input.len() == 1;
-            let is_hyphen = cli.input.first().unwrap() == "-";
+    //     if !cli.input.is_empty() {
+    //         let is_single_item = cli.input.len() == 1;
+    //         let is_hyphen = cli.input.first().unwrap() == "-";
 
-            if is_single_item && is_hyphen && is_stdin_available {
-                Ok(stdin()
-                    .lock()
-                    .lines()
-                    .map(|line| line.unwrap())
-                    .collect_vec())
-            } else {
-                Ok(cli.input.clone())
-            }
-        } else if let Some(file_path) = &cli.file_path {
-            let is_hyphen = file_path.as_os_str() == "-";
-            let path = if is_hyphen && is_stdin_available {
-                let mut stdin_file_path = String::new();
-                stdin().read_to_string(&mut stdin_file_path)?;
-                PathBuf::from(stdin_file_path.trim())
-            } else {
-                file_path.to_path_buf()
-            };
-            match std::fs::read_to_string(path) {
-                Ok(file_content) => Ok(file_content.lines().map(|it| it.to_string()).collect_vec()),
-                Err(error) => Err(error),
-            }
-        } else {
-            Err(Error::new(
-                ErrorKind::InvalidInput,
-                "error: no valid input could be found whatsoever",
-            ))
-        }
-    }
+    //         if is_single_item && is_hyphen && is_stdin_available {
+    //             Ok(stdin()
+    //                 .lock()
+    //                 .lines()
+    //                 .map(|line| line.unwrap())
+    //                 .collect_vec())
+    //         } else {
+    //             Ok(cli.input.clone())
+    //         }
+    //     } else if let Some(file_path) = &cli.file_path {
+    //         let is_hyphen = file_path.as_os_str() == "-";
+    //         let path = if is_hyphen && is_stdin_available {
+    //             let mut stdin_file_path = String::new();
+    //             stdin().read_to_string(&mut stdin_file_path)?;
+    //             PathBuf::from(stdin_file_path.trim())
+    //         } else {
+    //             file_path.to_path_buf()
+    //         };
+    //         match std::fs::read_to_string(path) {
+    //             Ok(file_content) => Ok(file_content.lines().map(|it| it.to_string()).collect_vec()),
+    //             Err(error) => Err(error),
+    //         }
+    //     } else {
+    //         Err(Error::new(
+    //             ErrorKind::InvalidInput,
+    //             "error: no valid input could be found whatsoever",
+    //         ))
+    //     }
+    // }
 
     pub(crate) fn handle_input(
         cli: &Cli,
@@ -436,8 +437,19 @@ mod cli {
 #[cfg(not(target_family = "wasm"))]
 fn main() {
     use clap::Parser;
+    // let cli = cli::Cli::parse();
+    /*implemented*/
     let cli = cli::Cli::parse();
-    if let Err(e) = cli::handle_input(&cli, cli::obtain_input(&cli)) {
+    let stdin = io::stdin();
+    let mut input = String::new();
+
+    let mut args: Vec<String> = Vec::new();
+    /*implemented*/
+    stdin.lock().read_line(&mut input).expect("Failed to read line");
+    for arg in input.trim().split_whitespace() {
+        args.push(arg.to_string());
+    }
+    if let Err(e) = cli::handle_input(&cli, Ok(args)) {
         eprintln!("{}", e);
         std::process::exit(1);
     }
